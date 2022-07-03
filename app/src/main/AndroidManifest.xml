@@ -3,7 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="site.arksurvey.android">
 
+    <!-- access internet -->
+    <!--    <uses-permission android:name="android.permission.INTERNET" />-->
+
+    <!-- generate global  -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.SYSTEM_OVERLAY_WINDOW" />
+
     <application
+        android:name=".ArkSurveyApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -14,8 +22,9 @@
         android:theme="@style/Theme.ArkSurveyAndroid"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+            android:name=".welcome.WelcomeActivity"
+            android:exported="true"
+            android:screenOrientation="nosensor">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
