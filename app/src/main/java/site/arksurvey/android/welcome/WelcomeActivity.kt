@@ -5,11 +5,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.os.Bundle
-import android.os.IBinder
-import android.os.Message
-import android.os.Messenger
+import android.os.*
 import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import com.google.android.material.snackbar.Snackbar
@@ -18,7 +16,7 @@ import site.arksurvey.android.databinding.ActivityWelcomeBinding
 import site.arksurvey.android.overlay.OverlayService
 import site.arksurvey.android.safeLazy
 
-class WelcomeActivity : AppCompatActivity() {
+class WelcomeActivity : AppCompatActivity(), View.OnClickListener {
     companion object {
         private const val TAG = "WelcomeActivity"
     }
@@ -26,18 +24,23 @@ class WelcomeActivity : AppCompatActivity() {
     private val binding by safeLazy { ActivityWelcomeBinding.inflate(layoutInflater) }
 
     //region for client send message to service
-    private var serverMessenger: Messenger? = null
+    private var serviceMessenger: Messenger? = null
+    private val messenger = Messenger(WelcomeHandler { serviceMessenger = it })
     private val connection = WelcomeServiceConnection(
-        connected = { serverMessenger = it },
-        disconnected = { serverMessenger = null }
+        connected = { serviceMessenger = it },
+        disconnected = { serviceMessenger = null }
     )
 
     private fun getShowOverlayViewMsg(show: Boolean): Message {
         val bundle = bundleOf(OverlayService.KEY_FOR_OVERLAY_VIEW to show)
-        return Message.obtain(null, OverlayService.MSG_WHAT_CLIENT_TO_SERVER)
-            .apply { data = bundle }
+        return Message.obtain(null, OverlayService.MSG_WHAT_CLIENT_TO_SERVICE)
+            .apply {
+                data = bundle
+                replyTo = messenger
+            }
     }
     //endregion
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,19 +68,9 @@ class WelcomeActivity : AppCompatActivity() {
     }
 
     private fun onCreateInner(savedInstanceState: Bundle?) {
-        binding.reset.setOnClickListener {
-            serverMessenger?.send(getShowOverlayViewMsg(OverlayService.VALUE_HIDE))
-            val msg = "关闭悬浮窗"
-            Snackbar.make(it, msg, Snackbar.LENGTH_SHORT).show()
-        }
-        binding.showAlertWindowGlobal.setOnClickListener {
-            serverMessenger?.send(getShowOverlayViewMsg(OverlayService.VALUE_SHOW))
-        }
-        binding.showAlertWindowGlobalWithAccessibility.setOnClickListener {
-            val msg =
-                "${binding.showAlertWindowGlobalWithAccessibility.text}_${binding.welcomeToolbar.title}"
-            Snackbar.make(it, msg, Snackbar.LENGTH_SHORT).show()
-        }
+        binding.reset.setOnClickListener(this)
+        binding.showAlertWindowGlobal.setOnClickListener(this)
+        binding.showAlertWindowGlobalWithAccessibility.setOnClickListener(this)
     }
 
     private fun requestSystemAlertWindowPermission(
@@ -102,20 +95,49 @@ class WelcomeActivity : AppCompatActivity() {
         super.onDestroy()
         Log.d(TAG, "onDestroy")
         unbindService(connection)
-        serverMessenger = null
+        serviceMessenger = null
     }
 
+    override fun onClick(v: View?) {
+        val vid = v?.id ?: return
+        if (vid == binding.reset.id) {
+            serviceMessenger?.send(getShowOverlayViewMsg(OverlayService.VALUE_HIDE))
+            serviceMessenger = null
+            val msg = "关闭悬浮窗"
+            Snackbar.make(v, msg, Snackbar.LENGTH_SHORT).show()
+        }
+        if (vid == binding.showAlertWindowGlobal.id) {
+            serviceMessenger?.send(getShowOverlayViewMsg(OverlayService.VALUE_SHOW))
+            serviceMessenger = null
+            val msg = "展示全局显示的悬浮窗（但仍然存在问题）"
+            Snackbar.make(v, msg, Snackbar.LENGTH_SHORT).show()
+        }
+        if (vid == binding.showAlertWindowGlobalWithAccessibility.id) {
+            val msg = "展示全局显示的悬浮窗（待实现）"
+            Snackbar.make(v, msg, Snackbar.LENGTH_SHORT).show()
+        }
+    }
 
     private class WelcomeServiceConnection constructor(
         private val connected: (Messenger) -> Unit,
         private val disconnected: () -> Unit
     ) : ServiceConnection {
+
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             connected(Messenger(service))
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             disconnected()
+        }
+    }
+
+    private class WelcomeHandler constructor(
+        private val updateServiceMessenger: (Messenger?) -> Unit
+    ) : Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            if (msg.what != OverlayService.MSG_WHAT_SERVICE_TO_CLIENT) return
+            updateServiceMessenger(msg.replyTo)
         }
     }
 }
