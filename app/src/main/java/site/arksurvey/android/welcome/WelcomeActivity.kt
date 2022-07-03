@@ -31,8 +31,8 @@ class WelcomeActivity : AppCompatActivity(), View.OnClickListener {
         disconnected = { serviceMessenger = null }
     )
 
-    private fun getShowOverlayViewMsg(show: Boolean): Message {
-        val bundle = bundleOf(OverlayService.KEY_FOR_OVERLAY_VIEW to show)
+    private fun getShowOverlayViewMsg(@OverlayService.ForOverlayView action: Int): Message {
+        val bundle = bundleOf(OverlayService.KEY_FOR_OVERLAY_VIEW to action)
         return Message.obtain(null, OverlayService.MSG_WHAT_CLIENT_TO_SERVICE)
             .apply {
                 data = bundle
@@ -101,7 +101,7 @@ class WelcomeActivity : AppCompatActivity(), View.OnClickListener {
     override fun onClick(v: View?) {
         val vid = v?.id ?: return
         if (vid == binding.reset.id) {
-            serviceMessenger?.send(getShowOverlayViewMsg(OverlayService.VALUE_HIDE))
+            serviceMessenger?.send(getShowOverlayViewMsg(OverlayService.VALUE_REMOVE))
             serviceMessenger = null
             val msg = "关闭悬浮窗"
             Snackbar.make(v, msg, Snackbar.LENGTH_SHORT).show()

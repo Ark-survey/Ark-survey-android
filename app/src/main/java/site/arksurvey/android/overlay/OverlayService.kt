@@ -8,10 +8,10 @@ import android.os.*
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.ViewGroup
 import android.view.WindowManager
+import androidx.annotation.IntDef
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.contains
+import androidx.core.view.isVisible
 import site.arksurvey.android.R
 import site.arksurvey.android.safeLazy
 
@@ -23,8 +23,9 @@ class OverlayService : Service() {
         const val MSG_WHAT_SERVICE_TO_CLIENT = 0x1919810
 
         const val KEY_FOR_OVERLAY_VIEW = "key_for_overlay_view"
-        const val VALUE_SHOW = true
-        const val VALUE_HIDE = false
+        const val VALUE_SHOW = 0
+        const val VALUE_REMOVE = 1
+        const val VALUE_HIDE = 2
     }
 
     private val messenger = Messenger(OverlayServiceHandler())
@@ -34,10 +35,11 @@ class OverlayService : Service() {
 
 
     private fun showOverlayView() {
+        if (view != null) {
+            view?.isVisible = true
+            return
+        }
         val lp = WindowManager.LayoutParams().apply {
-            /**
-             * 设置type 这里进行了兼容
-             */
             type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
@@ -57,11 +59,15 @@ class OverlayService : Service() {
         windowManager.addView(view, lp)
     }
 
-    private fun hideOverlayView() {
+    private fun removeOverlayView() {
         if (view != null) {
             windowManager.removeView(view)
         }
         view = null
+    }
+
+    private fun hideOverlayView() {
+        view?.isVisible = false
     }
 
 
@@ -86,15 +92,6 @@ class OverlayService : Service() {
         removeOverlayView()
     }
 
-    private fun removeOverlayView() {
-        val viewParent = view?.parent as? ViewGroup
-        if (view != null && viewParent != null && viewParent.contains(view!!)) {
-            windowManager.removeView(view!!)
-        }
-        view = null
-    }
-
-
     @SuppressLint("HandlerLeak")
     private inner class OverlayServiceHandler : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
@@ -104,9 +101,13 @@ class OverlayService : Service() {
                     val data = msg.data!!
                     if (!data.containsKey(KEY_FOR_OVERLAY_VIEW))
                         throw IllegalArgumentException("Must send for overlay view")
-                    val show = data.getBoolean(KEY_FOR_OVERLAY_VIEW)
-                    if (show) showOverlayView() else hideOverlayView()
-                    Log.d(TAG, "handleMessage: message from client. what=$what, show=$show")
+                    val action = data.getInt(KEY_FOR_OVERLAY_VIEW)
+                    when (action) {
+                        VALUE_SHOW -> showOverlayView()
+                        VALUE_REMOVE -> removeOverlayView()
+                        VALUE_HIDE -> hideOverlayView()
+                    }
+                    Log.d(TAG, "handleMessage: message from client. what=$what, action=$action")
                     // update the service messenger in client
                     val replyMsg = Message.obtain(null, MSG_WHAT_SERVICE_TO_CLIENT)
                         .apply { replyTo = messenger }
@@ -118,4 +119,9 @@ class OverlayService : Service() {
             }
         }
     }
+
+    @Target(AnnotationTarget.VALUE_PARAMETER)
+    @Retention(AnnotationRetention.RUNTIME)
+    @IntDef(VALUE_SHOW, VALUE_REMOVE, VALUE_HIDE)
+    annotation class ForOverlayView
 }
