@@ -8,7 +8,6 @@
 
     <!-- generate global  -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.SYSTEM_OVERLAY_WINDOW" />
 
     <application
         android:name=".ArkSurveyApplication"
@@ -31,6 +30,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".overlay.OverlayService"
+            android:exported="false"
+            android:isolatedProcess="false"
+            android:process=":overlay" />
     </application>
 
 </manifest>
