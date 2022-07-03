@@ -56,6 +56,7 @@ class OverlayService : Service() {
             y = 0
         }
         view = LayoutInflater.from(this).inflate(R.layout.overlay, null) as ConstraintLayout
+        view?.setOnTouchListener(OverlayViewTouchListener(windowManager, lp))
         windowManager.addView(view, lp)
     }
 
